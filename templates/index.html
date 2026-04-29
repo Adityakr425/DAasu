@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Plagiarism Detector — Upload</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div class="page">
+    <header class="topbar">
+      <div class="brand">Plagiarism Detector</div>
+      <div class="subtitle">Fast document fingerprinting & similarity analysis</div>
+    </header>
+
+    <main class="container">
+      {% with messages = get_flashed_messages() %}
+        {% if messages %}
+          <div class="flash">
+            {% for m in messages %}{{ m }}<br>{% endfor %}
+          </div>
+        {% endif %}
+      {% endwith %}
+
+      <section class="card upload-card">
+        <h2>Upload documents or paste text</h2>
+        <form method="post" action="/analyze" enctype="multipart/form-data" class="form-grid">
+          <div class="col">
+            <label class="label">File / Document 1</label>
+            <input type="file" name="file1" accept=".docx,.txt" class="file-input">
+            <label class="label">Or paste text 1</label>
+            <textarea name="text1" rows="7" placeholder="Paste document 1 (overrides file)"></textarea>
+          </div>
+
+          <div class="col">
+            <label class="label">File / Document 2</label>
+            <input type="file" name="file2" accept=".docx,.txt" class="file-input">
+            <label class="label">Or paste text 2</label>
+            <textarea name="text2" rows="7" placeholder="Paste document 2 (overrides file)"></textarea>
+          </div>
+
+          <div class="form-actions">
+            <button type="submit" class="btn-primary">🔍 Analyze</button>
+            <a href="/" class="btn-secondary">Reset</a>
+            <!-- This button is hidden by default and shown by JS if a last result exists in this browser -->
+            <a id="view-last-btn" href="/last_result" class="btn-secondary" style="display:none">📊 View Last Result</a>
+          </div>
+        </form>
+        <p class="muted">Tip: For better fingerprinting results increase document length. Use DOCX or plain text.</p>
+      </section>
+
+      <footer class="footer">
+        <small>Built using Rabin–Karp, Winnowing, N-gram & TF–IDF cosine similarity</small>
+      </footer>
+    </main>
+  </div>
+
+<script>
+  // Show the "View Last Result" button only if the browser has a local flag set by result.html
+  (function() {
+    try {
+      const hasLast = localStorage.getItem('plag_last') === '1';
+      const btn = document.getElementById('view-last-btn');
+      if (hasLast && btn) btn.style.display = 'inline-block';
+    } catch (e) {
+      // ignore localStorage errors
+    }
+  })();
+</script>
+</body>
+</html>

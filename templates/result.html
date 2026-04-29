@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Plagiarism Report</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <div class="page">
+    <header class="topbar">
+      <div class="brand">Plagiarism Detector</div>
+      <div class="subtitle">Report</div>
+    </header>
+
+    <main class="container">
+      <section class="card summary-card">
+        <div class="summary-left">
+          <h2>Documents</h2>
+          <dl class="doc-info">
+            <dt>Document 1</dt><dd>{{ file1_name }}</dd>
+            <dt>Document 2</dt><dd>{{ file2_name }}</dd>
+            
+            <dt>Words</dt><dd>{{ words1 }} | {{ words2 }}</dd>
+            <dt>Analysis time</dt><dd>{{ exec_time }} s</dd>
+          </dl>
+        </div>
+
+        <div class="summary-right">
+          <div class="big-metric">
+            <div class="metric-label">Average Similarity</div>
+            <div class="metric-value">{{ ((winnowing + ngram)/2 * 100)|round(2) }}%</div>
+            <!-- fixed Jinja filter chaining -->
+            <div class="verdict {{ verdict|lower|replace(' ', '-') }}">{{ verdict }}</div>
+          </div>
+
+     
+
+      <section class="card charts-card">
+        <h3>Similarity visualisation</h3>
+        <div class="charts-grid">
+          <canvas id="radarChart" aria-label="Similarity radar chart" role="img"></canvas>
+          <canvas id="barChart" aria-label="Fingerprint counts" role="img"></canvas>
+        </div>
+      </section>
+
+      <section class="card more-card">
+        <button id="toggle-more" class="toggle-btn">Additional information ▾</button>
+        <div id="more" class="more-panel" style="display:none;">
+          <div class="info-grid">
+            <div><strong>Winnowing similarity</strong><div class="info-value">{{ (winnowing*100)|round(4) }}%</div></div>
+            <div><strong>N-gram similarity</strong><div class="info-value">{{ (ngram*100)|round(4) }}%</div></div>
+            <div><strong>Common fingerprints</strong><div class="info-value">{{ common_fp }}</div></div>
+            <div><strong>Total fingerprints</strong><div class="info-value">{{ total_fp }}</div></div>
+          </div>
+
+          <div class="matched-sample">
+            <p class="muted">Fingerprint counts measure k-gram overlap; high common fingerprint count raises confidence.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="card actions-card">
+        <a class="btn-primary" href="/">← Back</a>
+      </section>
+    </main>
+  </div>
+
+<script>
+  // Persist a browser-side flag so the index page can show the "View Last Result" button
+  try {
+    localStorage.setItem('plag_last', '1');
+    localStorage.setItem('plag_last_ts', Date.now().toString());
+  } catch (e) { /* ignore */ }
+
+  // Toggle additional info
+  document.getElementById('toggle-more').addEventListener('click', function(){
+    const panel = document.getElementById('more');
+    if (panel.style.display === 'none' || panel.style.display === '') {
+      panel.style.display = 'block';
+      this.textContent = 'Additional information ▴';
+    } else {
+      panel.style.display = 'none';
+      this.textContent = 'Additional information ▾';
+    }
+  });
+
+  // Create attractive charts with gradients and nicer tooltips
+  function createGradient(ctx, colorStops) {
+    const w = ctx.canvas.width, h = ctx.canvas.height;
+    const grad = ctx.createLinearGradient(0, 0, w, h);
+    for (const s of colorStops) grad.addColorStop(s.pos, s.color);
+    return grad;
+  }
+
+  (function(){
+    const radarCtx = document.getElementById('radarChart').getContext('2d');
+    const radarGrad = createGradient(radarCtx, [
+      {pos:0, color:'rgba(59,130,246,0.85)'},
+      {pos:1, color:'rgba(99,102,241,0.45)'}
+    ]);
+
+    new Chart(radarCtx, {
+      type: 'radar',
+      data: {
+        labels: ['Winnowing', 'N-gram', 'Cosine'],
+        datasets: [{
+          label: 'Similarity',
+          data: [{{ winnowing }}, {{ ngram }}, {{ cosine }}],
+          backgroundColor: radarGrad,
+          borderColor: 'rgba(59,130,246,1)',
+          pointBackgroundColor: 'white',
+          pointBorderColor: 'rgba(59,130,246,1)',
+          pointRadius: 5,
+          borderWidth: 2
+        }]
+      },
+      options: {
+        scales: {
+          r: {
+            beginAtZero: true,
+            suggestedMax: 1,
+            grid: { color: 'rgba(0,0,0,0.05)' }
+          }
+        },
+        plugins: {
+          tooltip: { callbacks: { label: ctx => (ctx.formattedValue*100).toFixed(2) + '%' } }
+        }
+      }
+    });
+
+    const barCtx = document.getElementById('barChart').getContext('2d');
+    const barGrad = createGradient(barCtx, [
+      {pos:0, color:'rgba(16,185,129,0.9)'},
+      {pos:1, color:'rgba(34,211,238,0.5)'}
+    ]);
+
+    new Chart(barCtx, {
+      type: 'bar',
+      data: {
+        labels: ['Common', 'Only file 1', 'Only file 2', 'Total'],
+        datasets: [{
+          label: 'Fingerprint counts',
+          data: [{{ common_fp }}, {{ only1 }}, {{ only2 }}, {{ total_fp }}],
+          backgroundColor: barGrad,
+          borderRadius: 6,
+          barPercentage: 0.6
+        }]
+      },
+      options: {
+        plugins: {
+          legend: { display: false },
+          tooltip: { callbacks: { label: ctx => ctx.formattedValue } }
+        },
+        scales: {
+          y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.04)' } },
+          x: { grid: { display: false } }
+        }
+      }
+    });
+  })();
+</script>
+</body>
+</html>
